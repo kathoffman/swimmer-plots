@@ -60,9 +60,9 @@ class: middle, center
 
 ### Find me at:
 
+[`r fa(name = "link")` khstats.com](https://khstats.com)  
 [`r fa(name = "twitter")` @kat\_hoffman\_](http://twitter.com/kat_hoffman_)  
 [`r fa(name = "github")` @kathoffman](http://github.com/kathoffman)  
-[`r fa(name = "link")` khstats.com](https://khstats.com)  
 [`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
 
 
@@ -551,9 +551,9 @@ Thank you to the authors of `{xaringan}` and `{flipbookr}` for making these slid
 <br>
 <br>
 <br>
+[`r fa(name = "link")` khstats.com](https://khstats.com)  
 [`r fa(name = "twitter")` @kat\_hoffman\_](http://twitter.com/kat_hoffman_)  
 [`r fa(name = "github")` @kathoffman](http://github.com/kathoffman)  
-[`r fa(name = "link")` khstats.com](https://khstats.com)  
 [`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
 
 <img src="img/climbing_comic.jpeg" width="250"/> 
