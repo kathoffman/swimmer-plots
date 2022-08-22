@@ -171,20 +171,20 @@ dat_long |&gt; data.table()
 
 .pull-left[
 
-- ID column **optional: order by maximum time per subject**
+- ID column (**optional: order by maximum time per subject**)
 
 - Time column
 
-- One column per status **which is now the time if status is "yes" and `NA` if "no"**
+- One column per status, **which is now the time if you want the status to be marked on the plot**
 
-- One row per subject per unit of time (day)
+- One row per subject per unit of time
 ]
 
 --
 
 .pull-right[
 
-*One way to create data with a reordered patient ID (by hospital length-of-stay).*
+This is a way to create data with a reordered patient ID (by hospital length-of-stay):
 
 
 ```r
@@ -195,67 +195,21 @@ dat_reorder &lt;-
   ungroup() |&gt;
   mutate(id = fct_reorder(factor(id), max_day))
 ```
+
+The next slide shows how to change the status columns to `{status}_this_day` columns.
 ]
 
 ---
 
 # Step 2: Long-form data for plotting
 
-.pull-left[
 
 ```r
-dat_reorder |&gt;
-  select(id, day, death) |&gt;
-   mutate(death_this_day =
-           case_when(death == 1 ~ day)) |&gt;
-  data.table()
-```
-
-```
-      id day death death_this_day
-  1: 797   0     0             NA
-  2: 797   1     0             NA
-  3: 797   2     0             NA
-  4: 797   3     0             NA
-  5: 797   4     0             NA
- ---                             
-415: 664  27     0             NA
-416: 664  28     0             NA
-417: 373   0     0             NA
-418: 373   1     0             NA
-419: 373   2     0             NA
-```
-]
-
-
---
-
-
-.pull-right[
-
-
-```r
-# data set with *_this_day columns for all statuses
-dat_swim &lt;- 
-  dat_reorder |&gt;
-  mutate(severe_this_day =
-            case_when(severe == 1 ~ day),
-         steroids_this_day =
-            case_when(steroids == 1 ~ day),
-         death_this_day =
-            case_when(death == 1 ~ day))
-```
-
-*Output on next slide.*
-
-]
-
----
-
-
-```r
-dat_swim |&gt;
-  paged_table()
+dat_swim &lt;- dat_reorder |&gt;
+  mutate(severe_this_day = case_when(severe == 1 ~ day),
+         steroids_this_day = case_when(steroids == 1 ~ day),
+         death_this_day = case_when(death == 1 ~ day))
+dat_swim |&gt; paged_table()
 ```
 
 &lt;div data-pagedtable="false"&gt;
@@ -725,10 +679,10 @@ dat_swim %&gt;%
 ```r
 # define colors for all geometries with a color argument
 cols &lt;- c("Severe hypoxia" = "#b24745", # red
-          "Intubated" = "darkslateblue", # navy
-          "Not intubated" = "#74aaff", # lighter blue
+          "Intubated" = "#483d8b", # navy
+          "Not intubated" = "#74aaff", # blue
           "Steroids"="#ffd966", # gold
-          "Death" = "black") 
+          "Death" = "#000000")  # black
 ```
 
 - The label of the status should match the label inputted to `aes(col = "...")`.
@@ -1138,6 +1092,9 @@ p + labs(x="Days since hospitalization",
 
 
 
+
+
+
 ---
 
 # In Summary 🏊
@@ -1152,6 +1109,8 @@ p + labs(x="Days since hospitalization",
 
 - These ideas can be extended in many ways, such as [**showing the pattern of missing data**](https://www.khstats.com/blog/trt-timelines/trt-timelines/).
 ]
+
+--
 
 .pull-right[
 &lt;div class="figure"&gt;
@@ -1200,7 +1159,7 @@ Thank you to the authors of `{xaringan}` and `{flipbookr}` for making these slid
 [<svg aria-hidden="true" role="img" viewBox="0 0 640 512" style="height:1em;width:1.25em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M172.5 131.1C228.1 75.51 320.5 75.51 376.1 131.1C426.1 181.1 433.5 260.8 392.4 318.3L391.3 319.9C381 334.2 361 337.6 346.7 327.3C332.3 317 328.9 297 339.2 282.7L340.3 281.1C363.2 249 359.6 205.1 331.7 177.2C300.3 145.8 249.2 145.8 217.7 177.2L105.5 289.5C73.99 320.1 73.99 372 105.5 403.5C133.3 431.4 177.3 435 209.3 412.1L210.9 410.1C225.3 400.7 245.3 404 255.5 418.4C265.8 432.8 262.5 452.8 248.1 463.1L246.5 464.2C188.1 505.3 110.2 498.7 60.21 448.8C3.741 392.3 3.741 300.7 60.21 244.3L172.5 131.1zM467.5 380C411 436.5 319.5 436.5 263 380C213 330 206.5 251.2 247.6 193.7L248.7 192.1C258.1 177.8 278.1 174.4 293.3 184.7C307.7 194.1 311.1 214.1 300.8 229.3L299.7 230.9C276.8 262.1 280.4 306.9 308.3 334.8C339.7 366.2 390.8 366.2 422.3 334.8L534.5 222.5C566 191 566 139.1 534.5 108.5C506.7 80.63 462.7 76.99 430.7 99.9L429.1 101C414.7 111.3 394.7 107.1 384.5 93.58C374.2 79.2 377.5 59.21 391.9 48.94L393.5 47.82C451 6.731 529.8 13.25 579.8 63.24C636.3 119.7 636.3 211.3 579.8 267.7L467.5 380z"/></svg> khstats.com](https://khstats.com)  
 [<svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M511.6 36.86l-64 415.1c-1.5 9.734-7.375 18.22-15.97 23.05c-4.844 2.719-10.27 4.097-15.68 4.097c-4.188 0-8.319-.8154-12.29-2.472l-122.6-51.1l-50.86 76.29C226.3 508.5 219.8 512 212.8 512C201.3 512 192 502.7 192 491.2v-96.18c0-7.115 2.372-14.03 6.742-19.64L416 96l-293.7 264.3L19.69 317.5C8.438 312.8 .8125 302.2 .0625 289.1s5.469-23.72 16.06-29.77l448-255.1c10.69-6.109 23.88-5.547 34 1.406S513.5 24.72 511.6 36.86z"/></svg> kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
 
-&lt;img src="img/climbing_comic.jpeg" width="275"/&gt; 
+&lt;img src="img/climbing_comic.jpeg" width="250"/&gt; 
 
 
     </textarea>

@@ -172,20 +172,20 @@ dat_long |> data.table()
 
 .pull-left[
 
-- ID column **optional: order by maximum time per subject**
+- ID column (**optional: order by maximum time per subject**)
 
 - Time column
 
-- One column per status **which is now the time if status is "yes" and `NA` if "no"**
+- One column per status, **which is now the time if you want the status to be marked on the plot**
 
-- One row per subject per unit of time (day)
+- One row per subject per unit of time
 ]
 
 --
 
 .pull-right[
 
-*One way to create data with a reordered patient ID (by hospital length-of-stay).*
+This is a way to create data with a reordered patient ID (by hospital length-of-stay):
 
 ```{r data2}
 dat_reorder <-
@@ -195,49 +195,20 @@ dat_reorder <-
   ungroup() |>
   mutate(id = fct_reorder(factor(id), max_day))
 ```
+
+The next slide shows how to change the status columns to `{status}_this_day` columns.
 ]
 
 ---
 
 # Step 2: Long-form data for plotting
 
-.pull-left[
-```{r, layout="l-body-outset"}
-dat_reorder |>
-  select(id, day, death) |>
-   mutate(death_this_day =
-           case_when(death == 1 ~ day)) |>
-  data.table()
-```
-]
-
-
---
-
-
-.pull-right[
-
 ```{r}
-# data set with *_this_day columns for all statuses
-dat_swim <- 
-  dat_reorder |>
-  mutate(severe_this_day =
-            case_when(severe == 1 ~ day),
-         steroids_this_day =
-            case_when(steroids == 1 ~ day),
-         death_this_day =
-            case_when(death == 1 ~ day))
-```
-
-*Output on next slide.*
-
-]
-
----
-
-```{r}
-dat_swim |>
-  paged_table()
+dat_swim <- dat_reorder |>
+  mutate(severe_this_day = case_when(severe == 1 ~ day),
+         steroids_this_day = case_when(steroids == 1 ~ day),
+         death_this_day = case_when(death == 1 ~ day))
+dat_swim |> paged_table()
 ```
 
 ---
@@ -333,10 +304,10 @@ dat_swim %>%
 ```{r}
 # define colors for all geometries with a color argument
 cols <- c("Severe hypoxia" = "#b24745", # red
-          "Intubated" = "darkslateblue", # navy
-          "Not intubated" = "#74aaff", # lighter blue
+          "Intubated" = "#483d8b", # navy
+          "Not intubated" = "#74aaff", # blue
           "Steroids"="#ffd966", # gold
-          "Death" = "black") 
+          "Death" = "#000000")  # black
 ```
 
 - The label of the status should match the label inputted to `aes(col = "...")`.
@@ -490,6 +461,38 @@ p + labs(x="Days since hospitalization",
   ) 
 ```
 
+```{r include=F, eval=F, echo=F}
+p_final <- p + labs(x="Days since hospitalization",
+       y="Patient\nnumber",
+       title="Treatment Timeline for N=30 Patients") + #BREAK
+  scale_x_continuous(expand=c(0,0)) + #BREAK
+  theme(text=element_text(family="Poppins", size=11)) +
+  theme(title = element_text(angle = 0, vjust=.5,
+                             size=12, face="bold"),
+        axis.title.y = element_text(angle = 0, vjust=.5,
+                                    size=12, face="bold"),
+        axis.title.x = element_text(size=15, face="bold",
+                                    vjust=-0.5, hjust=0),
+        axis.text.y = element_text(size=6,
+                                   hjust=1.5),
+        axis.ticks.y = element_blank()) + #BREAK
+  theme(legend.position = c(0.8, 0.3),
+        legend.title = element_text(colour="black",
+                                    size=13,
+                                    face=4),
+        legend.text = element_text(colour="black",
+                                   size=10),
+        legend.background = element_rect(size=0.5,
+                                         linetype="solid",
+                                         colour ="gray30")) + #BREAK
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank()
+  ) 
+
+ggsave("img/swimmer.png", width=8, height=6)
+```
+
+
 ---
 
 # In Summary 🏊
@@ -504,6 +507,8 @@ p + labs(x="Days since hospitalization",
 
 - These ideas can be extended in many ways, such as [**showing the pattern of missing data**](https://www.khstats.com/blog/trt-timelines/trt-timelines/).
 ]
+
+--
 
 .pull-right[
 ```{r, echo=F, out.width=400, fig.cap = "Image from Patient Treatment Timelines for Longitudinal Survival Data -- KHstats, 2019"}
@@ -551,6 +556,6 @@ Thank you to the authors of `{xaringan}` and `{flipbookr}` for making these slid
 [`r fa(name = "link")` khstats.com](https://khstats.com)  
 [`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
 
-<img src="img/climbing_comic.jpeg" width="275"/> 
+<img src="img/climbing_comic.jpeg" width="250"/> 
 
 
