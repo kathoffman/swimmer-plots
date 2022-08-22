@@ -490,7 +490,6 @@ p + labs(x="Days since hospitalization",
   ) 
 ```
 
-
 ---
 
 # In Summary 🏊
@@ -512,21 +511,7 @@ knitr::include_graphics("img/trt-timeline-missing.png")
 ```
 ]
 
----
 
-class: middle, center
-
-Thank you to the authors of `{xaringan}` and `{flipbookr}` for making these slides possible.
-<br>
-<br>
-<br>
-[`r fa(name = "twitter")` @kat\_hoffman\_](http://twitter.com/kat_hoffman_)  
-[`r fa(name = "github")` @kathoffman](http://github.com/kathoffman)  
-[`r fa(name = "link")` khstats.com](https://khstats.com)  
-[`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
-
-
----
 
 <!-- adjust font size in this css code chunk, currently 80 -->
 
@@ -553,5 +538,19 @@ code.r.hljs.remark-code:hover{
 ```
 
 
+---
+
+class: middle, center
+
+Thank you to the authors of `{xaringan}` and `{flipbookr}` for making these slides possible.
+<br>
+<br>
+<br>
+[`r fa(name = "twitter")` @kat\_hoffman\_](http://twitter.com/kat_hoffman_)  
+[`r fa(name = "github")` @kathoffman](http://github.com/kathoffman)  
+[`r fa(name = "link")` khstats.com](https://khstats.com)  
+[`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
+
+<img src="img/climbing_comic.jpeg" width="275"/> 
 
 
