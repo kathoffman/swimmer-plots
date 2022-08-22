@@ -1,0 +1,95 @@
+library(tidyverse)
+library(gt)
+
+dat_long <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/data/dat_trt_timeline.csv", col_types = list(id  = "c", steroids = "c", death = "c", severe = "c"))
+
+# define colors for all geometries with a color argument
+cols <- c("Severe hypoxia" = "#b24745", # red
+          "Intubated" = "darkslateblue", # navy
+          "Not intubated" = "#74aaff", # lighter blue
+          "Steroids"="#ffd966", # gold
+          "Death" = "black") 
+shapes <- c("Severe hypoxia" = 21,
+            "Steroids" = 15, # square
+            "Death" = 4) # cross # empty circle (control inside with fill argument if desired)
+
+shape_override <- c(21, NA, NA, 15, 4) # order matches `cols`:severe, intubation (yes/no), steroids, death
+line_override <- c(NA,1,1,NA,NA) # order matches `cols`:severe, intubation (yes/no), steroids, death
+stroke_override <- c(.8,1,1,1,1) # order matches `cols`:severe, intubation (yes/no), steroids, death
+size_override <- c(2.5,2.5,2.6,2,2) # order matches `cols`:severe, intubation (yes/no), steroids, death
+
+# modify swimmer data to 1) only show events if yes 2) have an id ordered by max follow up
+dat_swim <- 
+  dat_long |>
+  mutate(severe_this_day = case_when(severe == 1 ~ day),
+         steroids_this_day = case_when(steroids == 1 ~ day),
+         death_this_day = case_when(death == 1 ~ day)) %>%
+  group_by(id) |>
+  mutate(max_day = max(day)) |>
+  ungroup() |>
+  nest(cols = day:death_this_day) |>
+  arrange(max_day) |>
+  mutate(id_sorted = factor(row_number())) |>
+  unnest()
+
+dat_swim |>
+  ggplot() +
+  geom_line(aes(x=day, y=id_sorted, col = intubation_status, group=id_sorted),
+            size=1.8) +
+  geom_point(aes(x=steroids_this_day, y=id_sorted, col="Steroids"), shape=15, stroke=2) +
+  geom_point(aes(x=severe_this_day, y=id_sorted, col="Severe hypoxia"), shape=21, size=2, stroke=1.5) +
+  geom_point(aes(x=death_this_day, y=id_sorted, col="Death", shape="Death"), shape=4, size=2, stroke=1.5) +
+  theme_bw() +
+  scale_color_manual(values = cols, name="Patient Status") +
+  scale_shape_manual(values = shapes, name = "Patient Status") +
+  guides(color = guide_legend(
+    override.aes = list(
+      shape = shape_override,
+      linetype = line_override)
+  )
+  )+
+  labs(x="Days since hospitalization",y="Patient\nnumber",title="Treatment Timeline for N=30 Patients") +
+  scale_x_continuous(expand=c(0,0)) + # remove extra white space 
+  theme(text=element_text(family="Poppins", size=11),
+        title = element_text(angle = 0, vjust=.5, size=12, face="bold"),
+        axis.title.y = element_text(angle = 0, vjust=.5, size=12, face="bold"),
+        axis.title.x = element_text(size=15, face="bold", vjust=-0.5, hjust=0),
+        axis.text.y = element_text(size=6, hjust=1.5),
+        axis.ticks.y = element_blank(),
+        legend.position = c(0.8, 0.3),
+        legend.title = element_text(colour="black", size=13, face=4),
+        legend.text = element_text(colour="black", size=10),
+        legend.background = element_rect(size=0.5, linetype="solid", colour ="gray30"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank()
+  ) 
+
+
+
+
+---
+  
+  `r chunk_reveal("my_fill", break_type = "rotate", widths = c(1,1), title = "### cycle through lines of code marked #ROTATE")`
+
+```{r my_fill, include = FALSE}
+dat_swim %>%
+  ggplot(aes(y=id_sorted, group=id_sorted)) + 
+  theme_bw() + 
+  geom_line(aes(x=day, col = intubation_status),
+            size=1.8) +
+  geom_point(aes(x=severe_this_day),
+             size=2,
+             stroke=1.5,
+             shape = 21) + #ROTATE
+  geom_point(aes(x=severe_this_day, col="#b24745"),
+             size=2,
+             stroke=1.5,
+             shape = 21) + #ROTATE
+  geom_point(aes(x=severe_this_day),
+             col="#b24745",
+             size=2,
+             stroke=1.5,
+             shape = 21)  #ROTATE
+```
+
+

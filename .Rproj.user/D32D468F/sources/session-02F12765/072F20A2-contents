@@ -1,0 +1,295 @@
+---
+title: "🏊 Swimmer Plots in R using ggplot2 🏊"
+subtitle: "R/Medicine 2022"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: xaringan-themer.css
+    nature:
+      ratio: 16:9
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+library(fontawesome)
+style_mono_accent(
+  base_color = "#1e90ff",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "300", "300i"),
+  code_font_google   = google_font("Fira Mono")
+)
+```
+
+
+```{r, include = F}
+# This is the recommended set up for flipbooks
+# you might think about setting cache to TRUE as you gain practice --- building flipbooks from scratch can be time consuming
+knitr::opts_chunk$set(fig.width = 9, message = FALSE, warning = FALSE, comment = "", cache = F)
+library(flipbookr)
+library(tidyverse)
+```
+
+# Hello!
+
+.pull-left[
+
+Katherine (Kat) Hoffman, M.S.
+
+Research Biostatistician<br>
+Weill Cornell Medicine
+
+<img src="img/climbing_comic.jpeg" width="400"/> 
+]
+
+
+.pull-right[
+
+### Find me at:
+
+[`r fa(name = "twitter")` @kat\_hoffman\_](http://twitter.com/kat_hoffman_)  
+[`r fa(name = "github")` @kathoffman](http://github.com/kathoffman)  
+[`r fa(name = "link")` khstats.com](https://khstats.com)  
+[`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
+
+]
+
+---
+
+
+<img src="img/climbing_comic.jpeg" width="400"/> 
+]
+
+
+.pull-right[
+
+### Find me at:
+
+[`r fa(name = "twitter")` @kat\_hoffman\_](http://twitter.com/kat_hoffman_)  
+[`r fa(name = "github")` @kathoffman](http://github.com/kathoffman)  
+[`r fa(name = "link")` khstats.com](https://khstats.com)  
+[`r fa(name = "paper-plane")` kathoffman.stats@gmail.com](mailto:kathoffman.stats@gmail.com)
+
+]
+
+
+---
+
+# Swimmer plot
+
+
+--
+
+- A graphical way to show a subject or patient's profile over time
+
+--
+
+- A series of horizontal lines, in which each line represents one subject
+
+--
+
+- Colors or shapes on the line indicate treatments or other statuses of that subject at a particular time
+
+--
+
+- Excellent for exploratory data analysis (EDA) of longitudinal data (e.g. visualize missigness or sampling patterns)
+
+--
+
+  - Can be included as a final product (e.g. manuscripts, presentations) to explain cohort composition, treatment variability, and more
+  
+--
+
+- While `R` packages such as `swimmer` exist, it is often faster and more customizable to write end-to-end `ggplot2` code yourself
+
+---
+
+# Today's swimmer plot
+
+
+```{r,echo=F, out.width=500}
+knitr::include_graphics("img/swimmer.png")
+```
+
+
+---
+
+# Data set
+
+- Long-format: one row per subject per unit of time (day)
+
+```{r data1}
+library(tidyverse)
+dat_long <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/data/dat_trt_timeline.csv",col_types = list(id  = "c", steroids = "c", death = "c", severe = "c"))
+dat_long
+```
+
+---
+
+# Step 2: Modify data 
+
+- this
+
+- that
+
+`r chunk_reveal("data2")`
+
+```{r data2, include = FALSE}
+dat_long %>%
+  mutate(severe_this_day = case_when(severe == 1 ~ day),
+         steroids_this_day = case_when(steroids == 1 ~ day),
+         death_this_day = case_when(death == 1 ~ day)) %>%
+  group_by(id) %>%
+  mutate(max_day = max(day)) %>%
+  ungroup() %>%
+  nest(cols = day:death_this_day) %>%
+  arrange(max_day) %>%
+  mutate(id_sorted = factor(row_number())) %>%
+  unnest() ->
+  dat_swim
+```
+
+
+---
+
+# Step 1: Add all your data
+
+---
+
+`r chunk_reveal("swim1")`
+
+```{r swim1, include = FALSE}
+dat_swim %>%
+  ggplot(aes(y=id_sorted)) +
+  theme_bw() +
+  geom_line(aes(x=day,
+                col = intubation_status,
+                group=id_sorted),
+            size=1.8) +
+  geom_point(aes(x=steroids_this_day), 
+             stroke=2,
+             shape = 15) +
+  geom_point(aes(x=severe_this_day),
+             size=2,
+             stroke=1.5,
+             shape = 4) +
+  geom_point(aes(x=death_this_day),
+             size=2,
+             stroke=1.5,
+             shape = 4) 
+```
+
+---
+
+```{r}
+# define colors for all geometries with a color argument
+cols <- c("Severe hypoxia" = "#b24745", # red
+          "Intubated" = "darkslateblue", # navy
+          "Not intubated" = "#74aaff", # lighter blue
+          "Steroids"="#ffd966", # gold
+          "Death" = "black") 
+shapes <- c("Severe hypoxia" = 21,
+            "Steroids" = 15, # square
+            "Death" = 4) # cross # empty circle (control inside with fill argument if desired)
+shape_override <- c(21, NA, NA, 15, 4) # order matches `cols`:severe, intubation (yes/no), steroids, death
+line_override <- c(NA,1,1,NA,NA) # order matches `cols`:severe, intubation (yes/no), steroids, death
+stroke_override <- c(.8,1,1,1,1) # order matches `cols`:severe, intubation (yes/no), steroids, death
+size_override <- c(2.5,2.5,2.6,2,2) # order matches `cols`:severe, intubation (yes/no), steroids, death
+# modify swimmer data to 1) only show events if yes 2) have an id ordered by max follow up
+```
+
+
+
+---
+
+`r chunk_reveal("swim2", break_type = "user")`
+
+```{r swim2, include = FALSE}
+dat_swim %>%
+  ggplot(aes(y=id_sorted)) +
+  theme_bw() +
+  geom_line(aes(x=day,
+                col = intubation_status,
+                group=id_sorted),
+            size=1.8) + #BREAK
+  geom_point(aes(x=steroids_this_day,
+                 col="Steroids",
+                 shape="Steroids"), 
+             stroke=2) +
+  geom_point(aes(x=severe_this_day,
+                 col="Severe hypoxia",
+                 shape="Severe hypoxia"),
+             size=2,
+             stroke=1.5) +
+  geom_point(aes(x=death_this_day,
+                 col="Death",
+                 shape="Death"),
+             size=2,
+             stroke=1.5) +
+  scale_color_manual(values = cols,
+                     name="Patient Status") +
+  scale_shape_manual(values = shapes,
+                     name = "Patient Status") +
+  guides(color = guide_legend(
+                        override.aes = list(
+                                shape = shape_override,
+                                linetype = line_override)
+                                ),
+         shape = "none"
+             )+
+  labs(x="Days since hospitalization",
+       y="Patient\nnumber",
+       title="Treatment Timeline for N=30 Patients") +
+  scale_x_continuous(expand=c(0,0)) + # remove extra white space 
+  theme(text=element_text(family="Poppins", size=11),
+        title = element_text(angle = 0, vjust=.5, size=12, face="bold"),
+        axis.title.y = element_text(angle = 0, vjust=.5, size=12, face="bold"),
+        axis.title.x = element_text(size=15, face="bold", vjust=-0.5, hjust=0),
+        axis.text.y = element_text(size=6, hjust=1.5),
+        axis.ticks.y = element_blank(),
+        legend.position = c(0.8, 0.3),
+        legend.title = element_text(colour="black", size=13, face=4),
+        legend.text = element_text(colour="black", size=10),
+        legend.background = element_rect(size=0.5, linetype="solid", colour ="gray30"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank()
+  ) 
+```
+
+
+
+<!-- adjust font size in this css code chunk, currently 80 -->
+
+```{css, eval = TRUE, echo = FALSE}
+.remark-code{line-height: 1.5; font-size: 80%}
+
+@media print {
+  .has-continuation {
+    display: block;
+  }
+}
+
+code.r.hljs.remark-code{
+  position: relative;
+  overflow-x: hidden;
+}
+
+
+code.r.hljs.remark-code:hover{
+  overflow-x:visible;
+  width: 500px;
+  border-style: solid;
+}
+```
+
+
+
+---
+
+# Notes: 
+
+- This minimal flipbook assumes you are online when you build and view.  It is going to find the most recent remark.js info online.
+
+- xaringan/remark.js slideshows are not self contained, single file slide shows.  Make sure you ship all the associated files that are created to display your flipbooks/slideshows.  I like to push .html and associated files to github repository and use Github Pages to host for beyond local sharing. :-)
+

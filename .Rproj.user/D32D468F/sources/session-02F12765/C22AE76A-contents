@@ -1,0 +1,964 @@
+---
+title: "Become a SuperLearner!"
+subtitle: "An Introduction to Ensemble Learning in `R`"
+author: "Kat Hoffman"
+institute: "WCM Biostatistics Computing Club"
+date: "January 19, 2021"
+output:
+  xaringan::moon_reader:
+    css: [default, "custom_css.css", "custom_fonts.css"]
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+
+
+<style>
+p.caption {
+  font-size: 0.6em;
+  font-style: italic;
+}
+</style>
+
+
+<style>
+
+.center2 {
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+</style>
+
+# Happy First Computing Club of 2021!
+
+--
+
+
+## Today's presentation has two parts:
+
+--
+
+**(I)** A motivation and **overview** of **ensemble learning** methods for prediction
+
+--
+
+**(II)** A **step-by-step walkthrough** of one method of ensemble learning: **superlearning/stacking**
+
+--
+
+### If you have to leave early... 😿
+
+--
+
+- Part II is covered in my [blog post](https://www.khstats.com/blog/sl/superlearning/) on superlearning 
+
+--
+
+- The recording of this talk will be on the [WCM Computing Club]( https://wcm-computing-club.github.io/bcc_schedule.html) website
+
+???
+
+Feel free to ask me questions at any point, either interrupt me or put them in the chat
+
+I've tried to keep things pretty conceptual and accessible but definitely let me know if I didn't explain something clearly or you didn't hear what i said
+
+---
+class: inverse, center, middle
+
+# PART I:
+
+## An overview of Ensemble Learning
+
+---
+
+# Ensemble Learning
+
+--
+
+- Used when the goal is optimizing **prediction** of an outcome
+
+--
+
+- The process of **combining multiple statistical learning models** with the goal of creating a final model that is **better than any individual model** would be by itself
+
+
+  
+--
+
+```{r, out.width=300, fig.align='center',echo=F,fig.cap = "Jerusalem String Quartet. Image source: LiveAbout.com"}
+knitr::include_graphics("img/Jarusalem-Quartet-String-Quartet-56a1541a5f9b58b7d0be5177.jpg")
+```
+
+--
+
+- Three general categories:
+
+--
+  1. Bagging
+  
+--
+  2. Boosting
+  
+--
+  3. Stacking/Superlearning
+
+???
+
+Broad definition of *statistical learning model*: any parametric or non-parametric supervised or unsupervised classification or regression function
+
+Statistical models can be of the same type (e.g. all decision trees) or very different (e.g. random forest and LASSO) 
+
+---
+
+# Ensemble Learning Method #1: Bagging
+
+--
+
+### **B**ootstrap **Agg**regat**ing**
+
+--
+
+1. Bootstrap the data (sample with replacement)
+
+--
+
+2. Fit a model on every bootstrapped data set
+
+--
+
+3. Aggregate (combine) the predictions
+
+--
+
+```{r, out.width=280, fig.align='center', echo=F, class="black-outline"}
+knitr::include_graphics("img/bagging.png")
+```
+
+---
+
+# Bagging: A very simple example
+
+--
+
+- First, bootstrap the data (sample with replacement)
+
+--
+```{r, message=F, warning=F}
+library(dplyr)
+# sample with replacement from the mtcars data set
+boot_sample_1 <- sample_n(mtcars, size = nrow(mtcars), replace = T)
+boot_sample_2 <- sample_n(mtcars, size = nrow(mtcars), replace = T)
+boot_sample_3 <- sample_n(mtcars, size = nrow(mtcars), replace = T)
+```
+
+--
+  
+- Then, fit a model on every bootstrapped data set
+
+--
+```{r}
+# simplest model for the outcome `mpg`: mean model
+model_1 <- mean(boot_sample_1$mpg) 
+model_2 <- mean(boot_sample_2$mpg)
+model_3 <- mean(boot_sample_3$mpg)
+```
+
+--
+  
+- Finally, aggregate (combine) the predictions
+
+--
+```{r}
+final_prediction <- mean(c(model_1, model_2, model_3))
+```
+
+---
+
+# Bagging in Practice
+
+
+--
+
+- Bagging is usually used to stabilize models with **high variance**, like **decision trees**
+
+--
+
+- **Decision tree**: simple, interpretable algorithm to sequentially split observations with the most homogenous responses. Each split is a "branch" and the terminal nodes, or "leaves", denote the outcome predictions
+
+--
+
+```{r, out.width=600, fig.align='center', echo=F, fig.cap = "Decision tree to estimate the probability of kyphosis after surgery, given the age of the patient and the vertebra at which surgery was started. Image source: Wikipedia"}
+knitr::include_graphics("img/decision_tree_wiki.png")
+```
+
+--
+
+- One of the earliest proposals for ensemble learning was to **fit decision trees on bootstrapped data sets**, then:
+
+--
+
+  - Average the predictions (continuous outcomes)
+  
+  - Choose the majority prediction (categorical outcomes)
+
+---
+
+# Random Forests
+
+--
+
+- A common variation of bagging is a **Random Forest**, where **slightly different decision trees** are fit to bootstrapped data
+
+--
+
+  - Different because *hyperparameters* such as maximum number of predictors, number of branches, depth of trees, or minimum number of observations in each leaf are **intentionally varied**
+  
+--
+
+  - **Weakly correlated** trees allowing bagging to yield **robust predictions**
+  
+<!-- -- -->
+
+<!-- *** -->
+
+<!-- - Note that bagging can also be used with non decision tree models, e.g. k-nearest neighbors -->
+
+---
+
+# Ensemble Learning Method #2: Boosting
+
+--
+
+- During bagging, models are fit in **parallel**, but in boosting, models are **fit sequentially** with the **goal to learn from past mistakes**
+
+--
+
+```{r, out.width=500, fig.align='center', echo=F}
+knitr::include_graphics("img/boosting.png")
+```
+
+---
+
+# Boosting
+
+--
+
+- Two main ways to do "fix the mistakes":
+
+--
+
+  - **Adaptive boosting:** Adjust model by **assigning a higher weight** to the predictions the previous model got wrong
+  
+--
+
+  - **Gradient boosting:** Adjust model by making a **new model to predict the errors of the previous model** and adding that error prediction to the previous model
+  
+--
+
+- I recommend this [interactive tutorial]( https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html
+) to learn more:
+
+```{r, out.width=400, fig.align='center', echo=F}
+knitr::include_graphics("img/gradient_boosting_tutorial.png")
+```
+
+
+---
+
+# Bagging vs. Boosting
+
+--
+
+- **Bagging**: fitting the **same class of models** *in parallel*
+
+--
+
+- **Boosting**: fitting the **same class of models** *sequentially*
+
+--
+
+.pull-left[
+```{r, out.width=280, fig.align='right', echo=F, class="black-outline"}
+knitr::include_graphics("img/bagging.png")
+```
+]
+.pull-right[
+```{r, out.width=350, fig.align='right', echo=F, class="black-outline"}
+knitr::include_graphics("img/boosting.png")
+```
+]
+
+--
+
+- In contrast, **superlearning** (AKA stacking), combines **different classes of models** through **weighting**
+
+---
+
+# The big picture of superlearning
+
+--
+
+```{r, out.width=500, fig.align='center', echo=F}
+knitr::include_graphics("img/superlearning_big_picture.png")
+```
+
+--
+
+- The left-most candidate models are often called **base learners**, and collectively referred to as a **stack**
+
+--
+
+- The model which assigns weights to the base learners is often called a **metalearner**
+
+--
+
+- Statistical theory described by van der Laan et. al (2007) tells us that the final stacked model should perform as good or better than any of the individual base learners
+
+
+---
+
+# Stacking vs. superlearning?
+
+--
+
+- Similar algorithms proposed under many different names: "model-mix" (Stone 1974), "predictive sample reuse method" (Geisser 1975), "stacking" (and "stacked generalizations") (Wolpert 1992), "weighted ensembling"
+
+--
+
+- van der Laan et. al proved the theoretical properties, named it "superlearning," which gained popularity in statistics literature, but "stacking" caught on in data science/machine learning community
+
+--
+
+```{r, out.width=250, fig.align='center', echo=F}
+knitr::include_graphics("img/spiderman_meme.jpg")
+```
+
+---
+
+# Ensemble Learning Method #3: Superlearning
+
+--
+
+- Superlearning combines many **different statistical learning algorithms** through **weighting**
+
+--
+
+  - Weights assigned according to how well the base learners **minimizes a specified loss function**, e.g. mean squared error (MSE) or area under the curve (AUC)
+  
+--
+
+  - Employ **resampling** to avoid overfitting (we will look at K-fold cross-validation, although other resampling methods can be used)
+
+--
+
+- ***Motivation:*** a mixture of **multiple different algorithms may be more optimal** for a given data set than any single algorithm
+
+--
+
+  - Ex: a tree based model averaged with a linear model (e.g. random forests and LASSO) can smooth some of the model’s edges to improve predictive performance
+  
+
+---
+class: inverse, center, middle
+
+# Part II:
+
+## The Superlearner algorithm, step by step
+
+---
+
+# Initial set up: generate or obtain data
+
+--
+
+.pull-left[
+
+```{r warning=F, message=F}
+library(tidyverse)
+set.seed(7)
+
+n <- 1000
+obs <- tibble(
+  id = 1:n,
+  x1 = rnorm(n),
+  x2 = rbinom(n, 1, plogis(10*x1)),
+  x3 = rbinom(n, 1, plogis(x1*x2 + .5*x2)),
+  x4 = rnorm(n, mean=x1*x2, sd=.5*x3),
+  y = x1 + x2 + x2*x3 + sin(x4)
+)
+```
+
+]
+
+.pull-right[
+```{r, echo=F}
+library(gt)
+obs %>%
+  head() %>%
+  gt() %>%
+  tab_header("Simulated data set") %>%
+  fmt_number(c("x1","x4","y"))
+```
+]
+
+---
+
+
+# Initial set up: choose base learners
+
+--
+
+- Can be any **parametric or non-parametric supervised learning algorithm**
+
+--
+
+  - Best to choose a **diverse range** of learners
+  
+--
+
+  - An example of a base learner library for a continuous outcome might be linear regression, LASSO, random forests, and multivariate adaptive regression splines (MARS)
+
+--
+
+- Here we will use three different linear regression models *only so that code for more complicated models is not distracting*
+
+--
+1. **Learner A**: $Y=\beta_0 + \beta_1 X_2 + \beta_2 X_4 + \epsilon$
+
+2. **Learner B**: $Y=\beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_1 X_3 + \beta_4 sin(X_4)  + \epsilon$
+
+3. **Learner C**:
+$$Y=\beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_3 + \beta_4 X_1 X_2 + \beta_5 X_1 X_3 + \beta_6 X_2 X_3 + \beta_7 X_1 X_2 X_3  + \epsilon$$
+  
+---
+
+# Initial set up: choose a metalearner
+
+--
+
+- Recall that the metalearner takes the base learner as inputs to produce a final superlearning algorithm
+
+```{r, out.width=400, fig.align='center', echo=F}
+knitr::include_graphics("img/superlearning_big_picture.png")
+```
+
+--
+
+- The metalearner represents the choice of loss function
+
+--
+
+  - Common loss functions: Mean Squared Error (MSE) or Area Under the Curve (AUC)
+
+--
+
+- We will use a linear regression to minimize the MSE, again *only so that code for more complicated models is not distracting*
+
+
+---
+
+# Step 1: Split data into K folds
+
+--
+
+- The superlearner algorithm relies on **K-fold cross-validation** (CV) to avoid overfitting, so we will split our data into K=10 folds
+
+--
+
+```{r, out.width=500, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step1.png")
+```
+
+--
+
+```{r}
+k <- 10 # 10 fold cv
+cv_index <- rep(1:k, each = n/k) # create indices for each CV fold
+```
+
+
+---
+
+# Step 2: Fit base learners on first CV-fold
+
+--
+
+- To begin cross-validation, we take 9 of the 10 folds of data and use those to train each of our base learners:
+
+--
+
+```{r, out.width=300, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step2.png")
+```
+
+--
+
+```{r}
+cv_train_1 <- obs[-which(cv_index == 10),]
+fit_1a <- glm(y ~ x2 + x4, data=cv_train_1)
+fit_1b <- glm(y ~ x1 + x2 + x1*x3 + sin(x4), data=cv_train_1)
+fit_1c <- glm(y ~ x1*x2*x3, data=cv_train_1)
+```
+
+
+---
+
+# Step 3: Obtain predictions for first CV-fold
+
+--
+
+- Then, we "test" or "validate" the fits for each of our base learners using the 10th fold of data:
+
+--
+
+```{r, out.width=350, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step3.png")
+```
+
+--
+
+```{r}
+cv_valid_1 <- obs[which(cv_index == 10),]
+pred_1a <- predict(fit_1a, newdata = cv_valid_1)
+pred_1b <- predict(fit_1b, newdata = cv_valid_1) 
+pred_1c <- predict(fit_1c, newdata = cv_valid_1)
+```
+
+
+---
+
+# Step 3: Obtain predictions for first CV-fold
+
+- We now have three vectors that are the length of one fold and contain the validation set's predictions:
+
+--
+
+```{r, echo=F}
+tibble(pred_1a, pred_1b, pred_1c) %>%
+  head(n=4) %>%
+  gt() %>%
+  tab_header("First CV round of predictions") %>%
+  fmt_number(everything()) %>%
+  tab_options(table.font.size = 'small', data_row.padding = gt::px(1))
+```
+
+--
+
+- Now we need to get these CV-predictions for the entire data set
+
+---
+
+# Step 4: CV predictions for entire data
+
+--
+
+Initial set up for mapping function:
+```{r}
+cv_folds <- as.list(1:k)
+names(cv_folds) <- paste0("fold",1:k)
+```
+--
+
+A function to run steps 2 and 3 for any CV `fold`:
+```{r}
+get_preds <- function(fold){ 
+  cv_train <- obs[-which(cv_index == fold),]  # make a training data set that contains all data except fold k
+  fit_a <- glm(y ~ x2 + x4, data=cv_train)  # fit all the base learners to that data
+  fit_b <- glm(y ~ x1 + x2 + x1*x3 + sin(x4), data=cv_train)
+  fit_c <- glm(y ~ x1*x2*x3, data=cv_train)
+  cv_valid <- obs[which(cv_index == fold),]  # make a validation data set that only contains data from fold k
+  pred_a <- predict(fit_a, newdata = cv_valid)  # obtain predictions from all the base learners for that validation data
+  pred_b <- predict(fit_b, newdata = cv_valid)
+  pred_c <- predict(fit_c, newdata = cv_valid)
+  return(data.frame("obs_id" = cv_valid$id, "cv_fold" = fold, pred_a, pred_b, pred_c))  # save the predictions and the ids of the observations in a data frame
+}
+```
+
+--
+Loop through every `fold` (`1:k`) and binds the rows of results together:
+```{r}
+cv_preds <- purrr::map_dfr(cv_folds, ~get_preds(fold = .x))
+```
+---
+
+# Step 4: CV predictions for entire data
+
+--
+- Each observation has now participated in one validation set, so we have three vectors of CV-predictions that are the same length as the full data
+
+--
+
+```{r, out.width=250, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step4.png")
+```
+--
+
+```{r,echo=F}
+cv_preds %>%
+  head(n=4) %>%
+  gt() %>%
+  fmt_number(c("pred_a","pred_b","pred_c")) %>%
+  tab_header("Cross-validated predictions from each base learner for entire data")
+```
+
+---
+
+# Step 5: Fit metalearner
+
+--
+
+- This is the key step of the superlearner algorithm: we will use a new learner, a metalearner, to take information from all of the base learners and create that new algorithm.
+
+--
+
+```{r, out.width=500, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step5.png")
+```
+
+--
+
+```{r}
+obs_preds <- full_join(obs, cv_preds, by=c("id" = "obs_id"))
+sl_fit <- glm(y ~ pred_a + pred_b + pred_c, data = obs_preds)
+
+```
+
+--
+
+- This gives us the coefficients, or weights, to apply to our base learners to minimize our loss function of interest
+
+---
+
+# Step 5: Fit metalearner
+
+--
+
+```{r,echo=F}
+broom::tidy(sl_fit) %>%
+  gt() %>%
+  tab_header("Metalearner regression coefficients") %>%
+  fmt_number(c("estimate","std.error","statistic","p.value"))
+```
+
+--
+
+- After our metalearning step, we conclude that given a set of predictions from Learner A, B, and C, we obtain our best possible predictions by adding -0.02 $\times$ predictions from Learner A, 0.86 $\times$ predictions from Learner B, and 0.16 $\times$ predictions from Learner C
+
+--
+
+- Note that Learner B gets the highest coefficient! We will see later this is because it has the lowest CV-MSE.
+
+---
+
+# Step 6: Fit base learners on entire data
+
+--
+
+- Now fit the base learners to the *entire* data set:
+
+--
+
+```{r, out.width=300, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step6.png")
+```
+
+--
+
+```{r}
+fit_a <- glm(y ~ x2 + x4, data=obs)
+fit_b <- glm(y ~ x1 + x2 + x1*x3 + sin(x4), data=obs)
+fit_c <- glm(y ~ x1*x2*x3, data=obs)
+```
+
+--
+
+- Recall that when we previously fit these base learners, it was only on 9/10 of the data
+
+---
+
+# Step 7: Obtain predictions from each base learner on entire data set
+
+--
+
+- Obtain the base learner predictions for the *entire* data set
+
+--
+
+```{r, out.width=300, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step7.png")
+```
+
+--
+
+```{r}
+pred_a <- predict(fit_a)
+pred_b <- predict(fit_b)
+pred_c <- predict(fit_c)
+full_data_preds <- tibble(pred_a, pred_b, pred_c)
+```
+
+---
+
+# Step 8: Weight base learners from entire data
+
+--
+
+- Use the base learner predictions (from the full data set) as inputs to the metalearner fit to apply the appropriate weight to each base learner prediction.
+
+--
+
+```{r, out.width=300, fig.align='center', echo=F}
+knitr::include_graphics("img/sl_steps/step8.png")
+```
+
+--
+
+```{r}
+sl_predictions <- predict(sl_fit, newdata = full_data_preds)
+sl_predictions[[1]] # first observation's prediction
+```
+
+---
+
+# Step 9: Obtain predictions on new data
+
+--
+
+- To predict on entirely new data, use the fits from each base learner (fit on entire data) to obtain base learner predictions for the new observations, then plug those base learner predictions into the metalearner fit
+ 
+--
+
+Example row of new data:
+```{r}
+new_obs <- tibble(x1 = .5, x2 = 0, x3 = 0, x4 = -3)
+```
+
+--
+
+Predict using base learners:
+```{r}
+new_pred_a <- predict(fit_a, newdata = new_obs)
+new_pred_b <- predict(fit_b, newdata = new_obs)
+new_pred_c <- predict(fit_c, newdata = new_obs)
+new_pred_df <- tibble("pred_a" = new_pred_a, "pred_b" = new_pred_b, "pred_c" = new_pred_c)
+```
+
+--
+
+Plug those base learner predictions into the metalearner fit.
+```{r}
+predict(sl_fit, newdata = new_pred_df)
+```
+
+---
+
+# If you missed anything...
+
+```{r, out.width=550, fig.align='center', echo=F}
+knitr::include_graphics("img/Superlearning.jpg")
+```
+
+A printable pdf of this cheat sheet is on my [Github](https://github.com/hoffmakl/causal-inference-visual-guides/blob/master/visual-guides/Superlearner.pdf).
+
+---
+
+# Step 10 and beyond…
+
+--
+
+- We could **compute the MSE** of the final superlearner predictions:
+
+```{r}
+sl_mse <- mean((obs$y - sl_predictions)^2)
+```
+
+--
+
+- Or, we could look at the MSE for each CV-fold:
+
+```{r,echo=F,message=F,warning=F,dpi = 300, fig.width=6, fig.height=4.5, out.width=400, fig.align='center'}
+cv_sq_error <-
+  obs_preds %>%
+  mutate(cv_sqrd_error_a = (y-pred_a)^2,   # compute squared error for each observation
+         cv_sqrd_error_b = (y-pred_b)^2,
+         cv_sqrd_error_c = (y-pred_c)^2)
+
+cv_risks <-
+  cv_sq_error %>%
+  group_by(cv_fold) %>%
+  summarise(cv_mse_a = mean(cv_sqrd_error_a),
+            cv_mse_b = mean(cv_sqrd_error_b),
+            cv_mse_c = mean(cv_sqrd_error_c)
+            )
+cv_risks %>%
+  pivot_longer(cv_mse_a:cv_mse_c,
+               names_to = "base_learner",
+               values_to = "mse") %>%
+  mutate(base_learner = toupper(str_remove(base_learner,"cv_mse_")))  %>%
+  ggplot(aes(cv_fold, mse, col=base_learner)) +
+  geom_point() +
+  theme_bw()  +
+    scale_x_continuous(breaks = 1:10) +
+  labs(x = "Cross-Validation (CV) Fold", y="Mean Squared Error (MSE)", col = "Base Learner", title="CV-MSEs for Base Learners A, B, and C")
+```
+
+
+---
+
+# Step 10 and beyond…
+
+--
+
+- A minor note: if we had decided to use Learner B because it minimized our loss function of interest, that choice is often called the **discrete superlearner**
+
+```{r}
+discrete_sl_predictions <- predict(glm(y ~ x1 + x2 + x1*x3 + sin(x4), data=obs))
+```
+
+--
+
+- Could also **add more algorithms** to base learner stack (we definitely should, since we only used linear regressions!)
+
+--
+
+  - Write functions to **tune these algorithms’ hyperparameters** over various grids
+  
+--
+
+- May want to **cross-validate** the entire process to evaluate the predictive performance of our superlearner algorithm
+
+--
+
+  - Alternatively, we could leave a hold-out data set for testing
+
+---
+
+# Using the SuperLearner package
+
+- Building an ensemble superlearner for our data with the base learner stack of `ranger` (random forests), `glmnet` (LASSO, by default), and `earth` (MARS) using the `SuperLearner` package in `R`:
+
+--
+
+```{r, warning=F, message=F}
+library(SuperLearner)
+x_df <- obs %>% select(x1:x4) %>% as.data.frame()
+sl_fit <- SuperLearner(Y = obs$y,
+                       X = x_df, 
+                       family = gaussian(),
+                     SL.library = c("SL.ranger", "SL.glmnet", "SL.earth"))
+```
+
+--
+
+- Detailed [vignette](https://cran.r-project.org/web/packages/SuperLearner/vignettes/Guide-to-SuperLearner.html)
+
+--
+
+- Base learners are easily customizable
+
+  - Add screens, tune over hyperparameters with `caret`
+  
+--
+
+- Cross-validate entire algorithm with `CV.SuperLearner` function
+
+---
+
+# Using the SuperLearner package
+
+--
+
+- View weights (`Coef`) by printing model fit:
+
+```{r}
+sl_fit
+```
+
+--
+
+- `Coef`s are inversely related to the CV-`Risk` (default is MSE)
+
+  - Here, MARS gets most of the prediction weight and LASSO gets none
+
+--
+
+- Specify metalearner with `method` argument
+
+--
+
+  - Default is Non-Negative Least Squares (NNLS) using `nnls` package (linear regression with coefficients restrained to non-negative numbers)
+  
+---
+
+# A brief comparison of `R` Packages
+  
+- `SuperLearner` is the oldest `R` package
+
+  - Pros: well-vetted and documented; Cons: very slow
+  
+--
+
+- `h2o` is an AI company which offers scalable prediction tools. The `R` version of `h2o` is available on CRAN.
+
+  - Pros: fast, well-vetted; Cons: steeper learning curve for one-off projects
+  
+--
+
+- `sl3` is the updated version of `SuperLearner` and is the backend of several causal inference packages out of UC Berkeley which allow for ensemble learning
+
+  - Pros: fast; Cons: not well-vetted yet (not on CRAN), uses `R6` interface which can be confusing for non-Python programmers
+  
+--
+
+- New `stacks` package by `tidymodels` through Rstudio
+
+  - Pros: unified framework with other `tidymodels` packages; Cons: commitment to `tidymodels` framework
+  
+---
+
+class: inverse, center, middle
+
+## Questions?
+
+**Slides:** {xaringan}
+
+**Email:** kah2797@med.cornell.edu
+
+---
+
+# References
+
+MJ Van der Laan, EC Polley, AE Hubbard, Super Learner,  Statistical applications in genetics and molecular, 2007
+
+Polley, Eric. “Chapter 3: Superlearning.” Targeted Learning: Causal Inference for Observational and Experimental Data, by M. J. van der. Laan and Sherri Rose, Springer, 2011.
+
+Polley E, LeDell E, Kennedy C, van der Laan M. Super Learner: Super Learner Prediction. R package version 2.0-22.
+
+Naimi AI, Balzer LB. Stacked generalization: an introduction to super learning. *Eur J Epidemiol.* 2018;33(5):459-464. doi:10.1007/s10654-018-0390-z
+
+LeDell, E. (2015). Scalable Ensemble Learning and Computationally Efficient Variance Estimation. UC Berkeley. ProQuest ID: LeDell_berkeley_0028E_15235. Merritt ID: ark:/13030/m5wt1xp7.
+
+M. Petersen and L. Balzer. [Introduction to Causal Inference](www.ucbbiostat.com). UC Berkeley, August 2014.
+
+<!-- --- -->
+
+<!-- # Extra: Convex combination as a metalearner -->
+
+<!-- - `SuperLearner` reweights NNLS so that the coefficients sum to 1 because simulation studies show a **convex combination** metalearner yields the best results -->
+
+<!-- - *Convex combination:* fitting the following regression, where $\alpha_1$, $\alpha_2$, and $\alpha_3$ are all non-negative and sum to 1. -->
+
+<!-- $$\mathrm{E}[Y|\hat{Y}_{LrnrA},\hat{Y}_{LrnrB},\hat{Y}_{LrnrC}] = \alpha_1\hat{Y}_{LrnrA} + \alpha_2\hat{Y}_{LrnrB} + \alpha_3\hat{Y}_{LrnrC}$$ -->
+
+<!-- - Notably, reweighting the coefficients after fitting NNLS is not a true convex combination -->
+
